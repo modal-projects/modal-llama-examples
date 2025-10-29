@@ -1,33 +1,14 @@
 import subprocess
 import time
 
-from pathlib import Path
-
 import modal
-import modal.experimental
 
 MINUTES = 60
 
-MODEL = "deepseek-ai/DeepSeek-V3"
-
-TRTLLM_PROFILES = modal.Volume.from_name("trtllm-profiles", create_if_missing=True)
-TRTLLM_PROFILES_PATH = Path("/trtllm/profiles")
-TRTLLM_ENGINE_PATH = Path("/trtllm/engines")
-TRTLLM_ENGINE_BUILDS = modal.Volume.from_name(
-    "trtllm-engine-builds", create_if_missing=True
-)
-MODEL_VOL = modal.Volume.from_name("big-model-hfcache", create_if_missing=True)
-MODEL_VOL_PATH = Path("/root/.cache/")
-volumes = {
-    MODEL_VOL_PATH: MODEL_VOL,
-    TRTLLM_PROFILES_PATH: TRTLLM_PROFILES,
-    TRTLLM_ENGINE_PATH: TRTLLM_ENGINE_BUILDS,
-}
-
-cuda_version = "12.8.1"  # should be no greater than host CUDA version
-flavor = "devel"  # includes full CUDA toolkit
-operating_sys = "ubuntu24.04"
-tag = f"{cuda_version}-{flavor}-{operating_sys}"
+MODEL = "meta-llama/Llama-3.3-70B-Instruct"
+GPU_TYPE = "B200"
+GPU_COUNT = 1
+PORT = 8000
 
 trtllm_image = (
     modal.Image.from_registry("nvcr.io/nvidia/tensorrt-llm/release:1.1.0rc1")
@@ -35,22 +16,17 @@ trtllm_image = (
     .pip_install("hf_transfer")
     .env(
         {
-            "HF_HUB_CACHE": "/root/.cache/hub",
             "HF_HUB_ENABLE_HF_TRANSFER": "1",
-            "HF_HUB_VERBOSITY": "debug",
             "PMIX_MCA_gds": "hash",
-            "TRTLLM_VERBOSE_ARTIFACTS": "1",
-            "TRTLLM_LOG_LEVEL": "DEBUG",
-            "TRTLLM_ENABLE_PDL": "1",
         },
     )
-    .add_local_file(f"configs/{MODEL}/trtllm.yaml", "/configs/llm_api_options.yaml")
+    .add_local_file(f"models/default/trtllm/trtllm.yaml", "/configs/llm_api_options.yaml")
 )
 
-app = modal.App("deepseek-v3-nospec")
+app = modal.App("figma-llama3.3-70b-test")
 
-N_CONTAINERS = 1
-PORT = 8000
+with trtllm_image.imports():
+    import httpx
 
 
 def serve():
@@ -60,11 +36,11 @@ def serve():
         "--host",
         "0.0.0.0",
         "--port",
-        "8000",
-        "--max_seq_len",
-        "48000",
+        str(PORT),
         "--tp_size",
-        "8",
+        str(GPU_COUNT),
+        "--backend",
+        "pytorch",
         "--trust_remote_code",
         "--extra_llm_api_options",
         "/configs/llm_api_options.yaml",
@@ -76,31 +52,34 @@ def serve():
 
 
 @app.cls(
-    gpu="B200:8",
+    gpu=f"{GPU_TYPE}:{GPU_COUNT}",
     image=trtllm_image,
     timeout=30 * MINUTES,
-    volumes=volumes,
-    experimental_options={"flash": "us-east"},
-    min_containers=N_CONTAINERS,
+    volumes={
+        "/root/.cache/huggingface": modal.Volume.from_name("huggingface-cache", create_if_missing=True),
+    },
+    secrets=[modal.Secret.from_name("huggingface-secret")],
+    min_containers=1,
 )
 class TRTLLM:
     @modal.enter()
     def enter(self):
         serve()
 
-        self.flash_handle = modal.experimental.flash_forward(PORT)
+        deadline: float = time.time() + 5 * 60
+        while time.time() < deadline:
+            try:
+                with httpx.Client(timeout=5) as client:
+                    response = client.get(f"http://127.0.0.1:{PORT}/health")
+                    if response.status_code == 200:
+                        print("Server is healthy 🚀")
+                        break
+            except Exception:  # pylint: disable=broad-except
+                pass
+            time.sleep(5)
+        else:
+            raise RuntimeError("Health-check failed – server did not respond in time")
 
-    @modal.method()
+    @modal.web_server(8000)
     def method(self):
         pass
-
-    @modal.exit()
-    def exit(self):
-        print(f"{self.flash_handle.get_container_url()} Stopping flash handle")
-        self.flash_handle.stop()
-        print(
-            f"{self.flash_handle.get_container_url()} Waiting 15 seconds to finish requests"
-        )
-        time.sleep(15)
-        print(f"{self.flash_handle.get_container_url()} Closing flash handle")
-        self.flash_handle.close()
