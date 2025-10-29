@@ -9,6 +9,7 @@ MODEL = "meta-llama/Llama-3.3-70B-Instruct"
 GPU_TYPE = "B200"
 GPU_COUNT = 1
 PORT = 8000
+MAX_BATCH_SIZE = 64
 
 trtllm_image = (
     modal.Image.from_registry("nvcr.io/nvidia/tensorrt-llm/release:1.1.0rc1")
@@ -23,7 +24,7 @@ trtllm_image = (
     .add_local_file(f"models/default/trtllm/trtllm.yaml", "/configs/llm_api_options.yaml")
 )
 
-app = modal.App("figma-llama3.3-70b-test")
+app = modal.App("figma-llama3.3-70b")
 
 with trtllm_image.imports():
     import httpx
@@ -61,6 +62,7 @@ def serve():
     secrets=[modal.Secret.from_name("huggingface-secret")],
     max_containers=1,
 )
+@modal.concurrent(max_inputs=MAX_BATCH_SIZE)
 class Inference:
     @modal.enter()
     def enter(self):
