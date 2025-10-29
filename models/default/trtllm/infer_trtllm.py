@@ -12,8 +12,8 @@ PORT = 8000
 
 trtllm_image = (
     modal.Image.from_registry("nvcr.io/nvidia/tensorrt-llm/release:1.1.0rc1")
-    .entrypoint([])  # Remove verbose logging by base image on entry
     .pip_install("hf_transfer")
+    .pip_install("httpx")
     .env(
         {
             "HF_HUB_ENABLE_HF_TRANSFER": "1",
@@ -59,9 +59,9 @@ def serve():
         "/root/.cache/huggingface": modal.Volume.from_name("huggingface-cache", create_if_missing=True),
     },
     secrets=[modal.Secret.from_name("huggingface-secret")],
-    min_containers=1,
+    max_containers=1,
 )
-class TRTLLM:
+class Inference:
     @modal.enter()
     def enter(self):
         serve()
