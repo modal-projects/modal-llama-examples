@@ -7,26 +7,21 @@ import modal
 import modal.experimental
 
 # Configuration constants
-MODEL = "zai-org/GLM-4.5"
-GPU_TYPE = os.environ.get("GPU_TYPE", "H200")
-GPU_COUNT = int(os.environ.get("GPU_COUNT", "8"))
+MODEL = "meta-llama/Llama-3.3-70B-Instruct"
+GPU_TYPE = os.environ.get("GPU_TYPE", "B200")
+GPU_COUNT = int(os.environ.get("GPU_COUNT", "1"))
 GPU_CONFIG = f"{GPU_TYPE}:{GPU_COUNT}"
 PORT = 8000
 MINUTES = 60
 N_CONTAINERS = 1
 
-# Profiling configuration
-VLLM_PROFILES_PATH = Path("/vllm/profiles")
-
 # Volume management
-MODEL_VOL = modal.Volume.from_name("big-model-hfcache", create_if_missing=True)
-vllm_cache_vol = modal.Volume.from_name("glm-vllm-cache", create_if_missing=True)
-vllm_profiles_vol = modal.Volume.from_name("vllm-profiles", create_if_missing=True)
+model_vol = modal.Volume.from_name("huggingface-cache", create_if_missing=True)
+vllm_cache_vol = modal.Volume.from_name("vllm-cache", create_if_missing=True)
 
 volumes = {
-    "/root/.cache/huggingface": MODEL_VOL,
+    "/root/.cache/huggingface": model_vol,
     "/root/.cache/vllm": vllm_cache_vol,
-    str(VLLM_PROFILES_PATH): vllm_profiles_vol,
 }
 
 # Image configuration with vLLM environment variables
@@ -49,8 +44,7 @@ vllm_image = (
 app = modal.App("glm-4.5-vllm")
 
 with vllm_image.imports():
-    import requests
-
+    import httpx
 
 def serve():
     """Launch vLLM server with configured parameters."""
@@ -74,6 +68,45 @@ def serve():
 
     print(f"vLLM command: {' '.join(vllm_cmd)}")
     subprocess.Popen(" ".join(vllm_cmd), shell=True)
+
+def _build_vllm_cmd(
+    tp_size: int,
+    max_seqs: None | int,
+    max_model_len: int,
+    enable_expert_parallel: bool,
+    port: int,
+) -> list[str]:
+    """Build vLLM command with enhanced options."""
+    print("Starting vLLM server...")
+    vllm_cmd = [
+        "vllm",
+        "serve",
+        MODEL,
+        "--host",
+        "0.0.0.0",
+        "--port",
+        str(port),
+        "--max-model-len",
+        str(max_model_len),
+        "--gpu-memory-utilization",
+        "0.95",
+        "--tensor-parallel-size",
+        str(tp_size),
+        "--enable-prefix-caching",  # Performance optimization
+    ]
+
+    if max_seqs is not None:
+        vllm_cmd.extend(["--max-num-seqs", str(max_seqs)])
+
+    if enable_expert_parallel:
+        vllm_cmd.append("--enable-expert-parallel")
+
+    # Optional KV cache dtype configuration
+    kv_cache_dtype = os.environ.get("VLLM_KV_CACHE_DTYPE")
+    if kv_cache_dtype:
+        vllm_cmd.extend(["--kv-cache-dtype", kv_cache_dtype])
+
+    return vllm_cmd
 
 
 @app.cls(
@@ -120,42 +153,3 @@ class VLLM:
         print(f"{self.flash_handle.get_container_url()} Closing flash handle")
         self.flash_handle.close()
 
-
-def _build_vllm_cmd(
-    tp_size: int,
-    max_seqs: None | int,
-    max_model_len: int,
-    enable_expert_parallel: bool,
-    port: int,
-) -> list[str]:
-    """Build vLLM command with enhanced options."""
-    print("Starting vLLM server...")
-    vllm_cmd = [
-        "vllm",
-        "serve",
-        MODEL,
-        "--host",
-        "0.0.0.0",
-        "--port",
-        str(port),
-        "--max-model-len",
-        str(max_model_len),
-        "--gpu-memory-utilization",
-        "0.95",
-        "--tensor-parallel-size",
-        str(tp_size),
-        "--enable-prefix-caching",  # Performance optimization
-    ]
-
-    if max_seqs is not None:
-        vllm_cmd.extend(["--max-num-seqs", str(max_seqs)])
-
-    if enable_expert_parallel:
-        vllm_cmd.append("--enable-expert-parallel")
-
-    # Optional KV cache dtype configuration
-    kv_cache_dtype = os.environ.get("VLLM_KV_CACHE_DTYPE")
-    if kv_cache_dtype:
-        vllm_cmd.extend(["--kv-cache-dtype", kv_cache_dtype])
-
-    return vllm_cmd
