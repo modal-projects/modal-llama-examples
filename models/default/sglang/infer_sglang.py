@@ -41,6 +41,8 @@ def serve():
         str(PORT),
         "--mem-fraction-static",
         "0.7",
+        "--max-running-requests",
+        str(MAX_BATCH_SIZE),
         "--tp-size",
         str(GPU_COUNT),
         "--enable-metrics",
