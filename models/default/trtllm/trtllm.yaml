@@ -1,3 +1,24 @@
+# speculative_config:
+#   decoding_type: NGram
+#   # The length maximum of draft tokens (can be understood as length maximum of output draft tokens).
+#   max_draft_len: 6
+#   # The length maximum of searching tokens (can be understood as length maximum of input tokens to search).
+#   max_matching_ngram_size: 3
+#   # Whether to keep all candidate pattern-matches pairs, only one match is kept for each pattern if False.
+#   is_keep_all: true
+#   # Whether to provide the oldest match when pattern is hit, the newest one is provided if False.
+#   is_use_oldest: true
+#   # Whether to use a common pool for all requests, or the pool is private for each request if False.
+#   is_public_pool: true
+
+# speculative_config:
+#   # Number of NGrams in lookahead branch per step
+#   max_window_size: 8
+#   # Number of tokens per NGram.
+#   max_ngram_size: 6
+#   # Number of NGrams in verification branch per step
+#   max_verification_set_size: 8
+
 cuda_graph_config:
   enable_padding: true
   max_batch_size: 1024
