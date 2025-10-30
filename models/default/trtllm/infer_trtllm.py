@@ -11,7 +11,7 @@ GPU_COUNT = 1
 PORT = 8000
 MAX_BATCH_SIZE = 64
 
-trtllm_image = (
+image = (
     modal.Image.from_registry("nvcr.io/nvidia/tensorrt-llm/release:1.0.0")
     .pip_install("hf_transfer")
     .pip_install("httpx")
@@ -26,7 +26,7 @@ trtllm_image = (
 
 app = modal.App("figma-trtllm-llama3.3-70b")
 
-with trtllm_image.imports():
+with image.imports():
     import httpx
 
 
@@ -51,10 +51,26 @@ def serve():
 
     subprocess.Popen(" ".join(cmd), shell=True)
 
+def is_healthy(timeout=20 * MINUTES):
+    url: str = f"http://127.0.0.1:{PORT}/health"
+    deadline: float = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with httpx.Client(timeout=5) as client:
+                response = client.get(url)
+                if response.status_code == 200:
+                    print("Server is healthy 🚀")
+                    return True
+        except Exception:  # pylint: disable=broad-except
+            pass
+        time.sleep(5)
+
+    return False
+
 
 @app.cls(
     gpu=f"{GPU_TYPE}:{GPU_COUNT}",
-    image=trtllm_image,
+    image=image,
     timeout=30 * MINUTES,
     volumes={
         "/root/.cache/huggingface": modal.Volume.from_name("huggingface-cache", create_if_missing=True),
@@ -69,19 +85,9 @@ class Inference:
     def enter(self):
         serve()
 
-        deadline: float = time.time() + 5 * 60
-        while time.time() < deadline:
-            try:
-                with httpx.Client(timeout=5) as client:
-                    response = client.get(f"http://127.0.0.1:{PORT}/health")
-                    if response.status_code == 200:
-                        print("Server is healthy 🚀")
-                        break
-            except Exception:  # pylint: disable=broad-except
-                pass
-            time.sleep(5)
-        else:
-            raise RuntimeError("Health-check failed – server did not respond in time")
+        timeout = 20 * MINUTES
+        if not is_healthy(timeout=timeout):
+            raise Exception(f"Container not healthy after {timeout} seconds")
 
     @modal.web_server(port=PORT)
     def method(self):
