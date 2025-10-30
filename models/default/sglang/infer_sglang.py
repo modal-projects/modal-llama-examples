@@ -1,23 +1,19 @@
 import os
 import subprocess
 import time
-import urllib.request
 
 import modal
-import modal.experimental
 
 MINUTES = 60
 
-MODEL_PATH = "openai/gpt-oss-120b"
-GPU_TYPE = os.environ.get("GPU_TYPE", "B200")
-GPU_COUNT = os.environ.get("GPU_COUNT", "1")
-GPU_CONFIG = f"{GPU_TYPE}:{GPU_COUNT}"
+MODEL_PATH = "meta-llama/Llama-3.3-70B-Instruct"
+GPU_TYPE = "B200"
+GPU_COUNT = 1
 PORT = 8000
+MAX_BATCH_SIZE = 64
 
 
-app = modal.App("gpt-oss-120b-sglang")
-hf_vol = modal.Volume.from_name("big-model-hfcache", create_if_missing=True)
-sglang_image = (
+image = (
     modal.Image.from_registry("lmsysorg/sglang:v0.5.3rc1-cu128-b200")
         .env(
             {
@@ -27,6 +23,10 @@ sglang_image = (
         )
 )
 
+app = modal.App("figma-sglang-llama3.3-70b")
+
+with image.imports():
+    import httpx
 
 def serve():
     cmd = [
@@ -40,7 +40,7 @@ def serve():
         "--port",
         str(PORT),
         "--mem-fraction-static",
-        "0.8",
+        "0.7",
         "--tp-size",
         str(GPU_COUNT),
         "--enable-metrics",
@@ -55,9 +55,10 @@ def is_healthy(timeout=20 * MINUTES):
     deadline: float = time.time() + timeout
     while time.time() < deadline:
         try:
-            with urllib.request.urlopen(url) as response:  # nosec B310
-                if response.status == 200:
-                    print("Server is healthy :rocket: –", url)
+            with httpx.Client(timeout=5) as client:
+                response = client.get(url)
+                if response.status_code == 200:
+                    print("Server is healthy 🚀")
                     return True
         except Exception:  # pylint: disable=broad-except
             pass
@@ -66,14 +67,15 @@ def is_healthy(timeout=20 * MINUTES):
     return False
 
 @app.cls(
-    gpu=GPU_CONFIG,
-    image=sglang_image,
+    gpu=f"{GPU_TYPE}:{GPU_COUNT}",
+    image=image,
     timeout=30 * MINUTES,
     volumes={
         "/root/.cache/flashinfer": modal.Volume.from_name("flashinfer-cache", create_if_missing=True),
-        "/root/.cache/huggingface": hf_vol,
+        "/root/.cache/huggingface": modal.Volume.from_name("huggingface-cache", create_if_missing=True),
     },
-    experimental_options={"flash": "us-east"},
+    secrets=[modal.Secret.from_name("huggingface-secret")],
+    max_containers=1,
     min_containers=1,
 )
 class SGLang:
@@ -82,22 +84,9 @@ class SGLang:
         serve()
 
         timeout = 20 * MINUTES
-        if not is_healthy():
+        if not is_healthy(timeout=timeout):
             raise Exception(f"Container not healthy after {timeout} seconds")
 
-        self.flash_handle = modal.experimental.flash_forward(PORT)
-
-    @modal.method()
+    @modal.web_server(port=PORT)
     def method(self):
         pass
-
-    @modal.exit()
-    def exit(self):
-        print(f"{self.flash_handle.get_container_url()} Stopping flash handle")
-        self.flash_handle.stop()
-        print(
-            f"{self.flash_handle.get_container_url()} Waiting 15 seconds to finish requests"
-        )
-        time.sleep(15)
-        print(f"{self.flash_handle.get_container_url()} Closing flash handle")
-        self.flash_handle.close()
