@@ -1,38 +1,50 @@
-import os
+import socket
 import subprocess
-import time
 
 import modal
 
 MINUTES = 60
 
+# MODEL = "meta-llama/Llama-3.3-70B-Instruct"
 MODEL = "meta-llama/Llama-3.3-70B-Instruct"
-GPU_TYPE = "B200"
-GPU_COUNT = 1
+APP_NAME = "vllm-llama3.3-70b"
+GPU_TYPE = "H200"
+GPU_COUNT = 2
 PORT = 8000
-MAX_BATCH_SIZE = 64
 
-# Image configuration with vLLM environment variables
-image = (
+VLLM_IMAGE: modal.Image = (
     modal.Image.debian_slim(python_version="3.11")
-    .uv_pip_install("huggingface_hub[hf_xet]", "requests")
-    .uv_pip_install("hf_transfer")
-    .uv_pip_install("vllm==0.10.2", extra_options="--torch-backend=cu128")
+    .uv_pip_install("huggingface_hub[hf_xet]", "hf_transfer", "httpx")
+    .uv_pip_install("vllm==0.11.0", extra_options="--torch-backend=cu128")
     .env(
         {
+            "HF_XET_HIGH_PERFORMANCE": "1",
             "HF_HUB_ENABLE_HF_TRANSFER": "1",
         }
     )
 )
 
-app = modal.App("figma-vllm-llama3.3-70b")
+# Persistent volumes for caching model weights and vLLM binaries
+VLLM_CACHE_VOL: modal.Volume = modal.Volume.from_name(
+    "vllm-cache", create_if_missing=True
+)
+HF_CACHE_VOL: modal.Volume = modal.Volume.from_name(
+    "huggingface-cache", create_if_missing=True
+)
 
-with image.imports():
-    import httpx
+
+def wait_ready(proc: subprocess.Popen, port: int = PORT):
+    while True:
+        try:
+            socket.create_connection(("localhost", port), timeout=1).close()
+            return
+        except OSError:
+            if proc.poll() is not None:
+                raise RuntimeError(f"server exited with {proc.returncode}")
+
 
 def serve():
-    """Launch vLLM server with configured parameters."""
-    vllm_cmd = [
+    cmd = [
         "vllm",
         "serve",
         MODEL,
@@ -40,57 +52,66 @@ def serve():
         "0.0.0.0",
         "--port",
         str(PORT),
-        "--max-model-len",
-        "8192",
         "--gpu-memory-utilization",
         "0.95",
         "--tensor-parallel-size",
-        str(GPU_COUNT),
+        str(GPU_COUNT),  # 1 H200 GPU
         "--enable-prefix-caching",  # Performance optimization
+        "--async-scheduling",
+        # "--enable-sleep-mode",
+        # "--api-key", os.environ["MODAL_API_KEY"], # Optional API key
     ]
+    print(f"cmd: {cmd}")
+    return subprocess.Popen(" ".join(cmd), shell=True)
 
-    print(f"vLLM command: {' '.join(vllm_cmd)}")
 
-    subprocess.Popen(" ".join(vllm_cmd), shell=True)
+app = modal.App(name=APP_NAME)
 
-def is_healthy(timeout=20 * MINUTES):
-    url: str = f"http://127.0.0.1:{PORT}/health"
-    deadline: float = time.time() + timeout
-    while time.time() < deadline:
-        try:
-            with httpx.Client(timeout=5) as client:
-                response = client.get(url)
-                if response.status_code == 200:
-                    print("Server is healthy 🚀")
-                    return True
-        except Exception:  # pylint: disable=broad-except
-            pass
-        time.sleep(5)
-
-    return False
 
 @app.cls(
-    gpu=f"{GPU_TYPE}:{GPU_COUNT}",
-    image=image,
-    timeout=30 * MINUTES,
+    image=VLLM_IMAGE,
+    gpu=f"{GPU_TYPE}:{GPU_COUNT}",  # "h100:8" for 8 H100s if needed
     volumes={
-        "/root/.cache/huggingface": modal.Volume.from_name("huggingface-cache", create_if_missing=True),
-        "/root/.cache/vllm": modal.Volume.from_name("vllm-cache", create_if_missing=True),
+        "/root/.cache/vllm": VLLM_CACHE_VOL,
+        "/root/.cache/huggingface": HF_CACHE_VOL,
     },
-    min_containers=1,
-    max_containers=1,
+    region="us-west",
+    experimental_options={"input_plane_region": "us-west"},
+    secrets=[
+        modal.Secret.from_name("huggingface-secret"),
+        # modal.Secret.from_name("optional-api-key"),
+    ],
+    startup_timeout=30 * MINUTES,
 )
-@modal.concurrent(max_inputs=MAX_BATCH_SIZE)
-class Inference:
+@modal.concurrent(max_inputs=10, target_inputs=8)
+class ModelVLLM:
     @modal.enter()
     def enter(self):
-        serve()
+        self._proc = serve()
 
-        timeout = 20 * MINUTES
-        if not is_healthy(timeout=timeout):
-            raise Exception(f"Container not healthy after {timeout} seconds")
+        wait_ready(self._proc)
 
-    @modal.web_server(port=PORT)
-    def method(self):
-        """Keep server running."""
-        pass
+    @modal.web_server(8000)
+    def serve(self):
+        return  # vLLM handles the route
+
+    @modal.exit()
+    def exit(self):
+        self._proc.terminate()
+
+
+# This part runs locally as part of `modal run` to test the model is configured correctly, behind a temporary dev endpoint.
+# To run evals, use `modal deploy` to create a persistent endpoint (e.g. for LangSmith evals).
+@app.local_entrypoint()
+def main():
+    import subprocess
+
+    # Grab the temporary dev endpoint URL.
+    url = ModelVLLM().serve.get_web_url()
+    print(f"Testing model at {url}")
+    subprocess.run(
+        f'curl -X POST {url}/v1/chat/completions -d \'{{"messages": [{{"role": "user", "content": "Hello, how are you?"}}]}}\' -H \'Content-Type: application/json\'',
+        shell=True,
+        check=True,
+    )
+    print("Test successful")
