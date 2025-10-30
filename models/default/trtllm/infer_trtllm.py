@@ -12,7 +12,7 @@ PORT = 8000
 MAX_BATCH_SIZE = 64
 
 trtllm_image = (
-    modal.Image.from_registry("nvcr.io/nvidia/tensorrt-llm/release:1.1.0rc1")
+    modal.Image.from_registry("nvcr.io/nvidia/tensorrt-llm/release:1.0.0")
     .pip_install("hf_transfer")
     .pip_install("httpx")
     .env(
@@ -21,10 +21,10 @@ trtllm_image = (
             "PMIX_MCA_gds": "hash",
         },
     )
-    .add_local_file(f"models/default/trtllm/trtllm.yaml", "/configs/llm_api_options.yaml")
+    .add_local_file(f"models/default/trtllm/trtllm.yaml", "/root/configs/llm_api_options.yaml")
 )
 
-app = modal.App("figma-llama3.3-70b")
+app = modal.App("figma-trtllm-llama3.3-70b")
 
 with trtllm_image.imports():
     import httpx
@@ -44,7 +44,7 @@ def serve():
         "pytorch",
         "--trust_remote_code",
         "--extra_llm_api_options",
-        "/configs/llm_api_options.yaml",
+        "/root/configs/llm_api_options.yaml",
     ]
 
     print(cmd)
@@ -61,6 +61,7 @@ def serve():
     },
     secrets=[modal.Secret.from_name("huggingface-secret")],
     max_containers=1,
+    min_containers=1,
 )
 @modal.concurrent(max_inputs=MAX_BATCH_SIZE)
 class Inference:
@@ -82,6 +83,6 @@ class Inference:
         else:
             raise RuntimeError("Health-check failed – server did not respond in time")
 
-    @modal.web_server(8000)
+    @modal.web_server(port=PORT)
     def method(self):
         pass

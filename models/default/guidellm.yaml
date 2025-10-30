@@ -1,9 +1,0 @@
-target: https://modal-labs-aviral-dev--glm-4-5-sglang-sglang.us-east.modal.direct
-data: "./benchmark_data.jsonl"
-rate_type: "concurrent"
-rate: 8.0
-max_seconds: 240
-backend_type: openai_http
-backend_args:
-  remove_from_body: ["max_completion_tokens"]
-output_path: "./benchmark_results/my_result.json"
