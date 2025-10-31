@@ -35,7 +35,7 @@ def wait_ready(proc: subprocess.Popen, port: int = PORT):
             return
         except OSError:
             if proc.poll() is not None:
-                raise RuntimeError(f"vLLM exited with {proc.returncode}")
+                raise RuntimeError(f"server exited with {proc.returncode}")
 
 
 def serve():
