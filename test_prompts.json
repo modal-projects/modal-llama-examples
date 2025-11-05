@@ -1,0 +1,53 @@
+[
+  {
+    "messages": [
+      {"role": "user", "content": "Write a Python function that implements binary search on a sorted array. Include proper error handling and comments."}
+    ]
+  },
+  {
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant specializing in computer science."},
+      {"role": "user", "content": "Explain the difference between depth-first search and breadth-first search algorithms."}
+    ]
+  },
+  {
+    "messages": [
+      {"role": "user", "content": "What are the main advantages of using async/await in Python compared to traditional threading?"}
+    ]
+  },
+  {
+    "messages": [
+      {"role": "user", "content": "Implement a simple LRU cache in Python using OrderedDict."}
+    ]
+  },
+  {
+    "messages": [
+      {"role": "user", "content": "Explain how gradient descent works in neural networks."}
+    ]
+  },
+  {
+    "messages": [
+      {"role": "user", "content": "Write a SQL query to find the second highest salary from an Employee table."}
+    ]
+  },
+  {
+    "messages": [
+      {"role": "user", "content": "What is the time complexity of quicksort in the best, average, and worst cases? Explain why."}
+    ]
+  },
+  {
+    "messages": [
+      {"role": "user", "content": "How does garbage collection work in Python? What are reference cycles?"}
+    ]
+  },
+  {
+    "messages": [
+      {"role": "user", "content": "Implement a function to check if a binary tree is balanced."}
+    ]
+  },
+  {
+    "messages": [
+      {"role": "user", "content": "Explain the CAP theorem and its implications for distributed systems."}
+    ]
+  }
+]

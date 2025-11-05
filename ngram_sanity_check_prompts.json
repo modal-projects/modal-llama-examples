@@ -1,0 +1,122 @@
+[
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a precise echo bot. Repeat the user's message EXACTLY as provided, word for word, character for character. Do not add any additional text, formatting, or explanation."
+      },
+      {
+        "role": "user",
+        "content": "The quantum flux capacitor initialized with parameters: alpha=0.7823, beta=1.4142, gamma=2.7183, delta=3.1416. System diagnostics show: memory_usage=87.3%, cpu_load=42.1%, network_latency=12.5ms, disk_io=234.56MB/s. Configuration matrix: [[1.23, 4.56, 7.89], [2.34, 5.67, 8.90], [3.45, 6.78, 9.01]]. Status codes received: SUCCESS, WARNING, INFO, DEBUG, TRACE. Timestamp: 2024-11-06T15:30:45.678Z"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a code repeater. When given code, output it exactly as provided without any modifications, additions, or markdown formatting."
+      },
+      {
+        "role": "user",
+        "content": "function processDataStream(inputBuffer, outputChannel, configOptions) {\n    const BUFFER_SIZE = 8192;\n    const MAX_RETRIES = 5;\n    const TIMEOUT_MS = 3000;\n    \n    let processedChunks = 0;\n    let errorCount = 0;\n    let lastTimestamp = Date.now();\n    \n    while (inputBuffer.hasMore()) {\n        const chunk = inputBuffer.read(BUFFER_SIZE);\n        const processed = transformChunk(chunk, configOptions);\n        \n        if (processed.status === 'SUCCESS') {\n            outputChannel.write(processed.data);\n            processedChunks++;\n        } else {\n            errorCount++;\n            if (errorCount > MAX_RETRIES) {\n                throw new Error('Maximum retries exceeded');\n            }\n        }\n        \n        lastTimestamp = Date.now();\n    }\n    \n    return { processedChunks, errorCount, duration: Date.now() - lastTimestamp };\n}"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "Repeat the following list exactly as provided by the user, maintaining all formatting and structure."
+      },
+      {
+        "role": "user",
+        "content": "1. Initialize project repository with git\n2. Setup development environment variables\n3. Install required dependencies: express@4.18.2, mongoose@7.0.3, dotenv@16.0.3, cors@2.8.5\n4. Configure database connection string: mongodb://localhost:27017/myapp_production\n5. Create base schema models for User, Product, Order, Payment\n6. Implement authentication middleware using JWT tokens\n7. Setup API routes: /api/v1/users, /api/v1/products, /api/v1/orders, /api/v1/payments\n8. Add validation schemas using Joi or Yup\n9. Configure logging with Winston: error.log, combined.log, debug.log\n10. Setup testing framework with Jest and Supertest\n11. Create Docker configuration: Dockerfile, docker-compose.yml\n12. Implement CI/CD pipeline with GitHub Actions\n13. Add monitoring with Prometheus and Grafana\n14. Configure rate limiting and security headers\n15. Deploy to production environment"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a JSON echo service. Return the exact JSON structure provided by the user without any modifications."
+      },
+      {
+        "role": "user",
+        "content": "{\"transaction_id\": \"TXN-2024-11-06-ABCD1234\", \"amount\": 1234.56, \"currency\": \"USD\", \"status\": \"COMPLETED\", \"metadata\": {\"customer_id\": \"CUST-789-XYZ\", \"merchant_id\": \"MERCH-456-ABC\", \"payment_method\": \"CREDIT_CARD\", \"card_last_four\": \"4242\", \"authorization_code\": \"AUTH-987654\"}, \"timestamps\": {\"created_at\": \"2024-11-06T10:15:30Z\", \"processed_at\": \"2024-11-06T10:15:32Z\", \"completed_at\": \"2024-11-06T10:15:35Z\"}, \"fees\": {\"processing_fee\": 25.89, \"platform_fee\": 12.34, \"tax\": 8.76}, \"shipping_info\": {\"address\": \"123 Main St, Suite 456\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": \"94105\", \"country\": \"USA\"}}"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "Echo back the technical specifications exactly as provided."
+      },
+      {
+        "role": "user",
+        "content": "TECHNICAL SPECIFICATION DOCUMENT v2.3.1\n=====================================\nProcessor: AMD Ryzen 9 7950X (16 cores, 32 threads, 4.5GHz base, 5.7GHz boost)\nMemory: 128GB DDR5-5600 (4x32GB modules, CL36-36-36-76, 1.1V)\nStorage: 2TB Samsung 990 PRO NVMe (7,450MB/s read, 6,900MB/s write)\nGPU: NVIDIA RTX 4090 (24GB GDDR6X, 2520MHz boost, 450W TDP)\nMotherboard: ASUS ROG Crosshair X670E Hero\nPower Supply: Corsair AX1600i (1600W, 80+ Titanium)\nCooling: Arctic Liquid Freezer II 420mm AIO\nCase: Lian Li O11 Dynamic EVO XL\nOperating System: Ubuntu 22.04.3 LTS (kernel 6.2.0-36-generic)\nCompiler: GCC 11.4.0 with -O3 -march=native -mtune=native flags\nBenchmark Results: Cinebench R23 Multi: 38,245 points, Single: 2,045 points"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "Repeat the SQL query exactly as provided, including all formatting and comments."
+      },
+      {
+        "role": "user",
+        "content": "-- Complex analytical query for sales performance\nWITH monthly_sales AS (\n    SELECT \n        DATE_TRUNC('month', order_date) AS month,\n        product_category,\n        SUM(quantity * unit_price) AS total_revenue,\n        COUNT(DISTINCT customer_id) AS unique_customers,\n        AVG(quantity * unit_price) AS avg_order_value\n    FROM orders o\n    JOIN order_items oi ON o.order_id = oi.order_id\n    JOIN products p ON oi.product_id = p.product_id\n    WHERE order_date >= '2024-01-01'\n    GROUP BY DATE_TRUNC('month', order_date), product_category\n),\nranked_categories AS (\n    SELECT \n        month,\n        product_category,\n        total_revenue,\n        unique_customers,\n        avg_order_value,\n        ROW_NUMBER() OVER (PARTITION BY month ORDER BY total_revenue DESC) AS category_rank,\n        LAG(total_revenue) OVER (PARTITION BY product_category ORDER BY month) AS prev_month_revenue\n    FROM monthly_sales\n)\nSELECT \n    month,\n    product_category,\n    total_revenue,\n    unique_customers,\n    avg_order_value,\n    category_rank,\n    ROUND(((total_revenue - prev_month_revenue) / NULLIF(prev_month_revenue, 0)) * 100, 2) AS growth_percentage\nFROM ranked_categories\nWHERE category_rank <= 5\nORDER BY month DESC, category_rank;"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a pattern repeater. Reproduce the exact pattern sequence provided by the user."
+      },
+      {
+        "role": "user",
+        "content": "PATTERN-ALPHA-001 PATTERN-BETA-002 PATTERN-GAMMA-003 PATTERN-DELTA-004 PATTERN-EPSILON-005 PATTERN-ZETA-006 PATTERN-ETA-007 PATTERN-THETA-008 PATTERN-IOTA-009 PATTERN-KAPPA-010 PATTERN-LAMBDA-011 PATTERN-MU-012 PATTERN-NU-013 PATTERN-XI-014 PATTERN-OMICRON-015 PATTERN-PI-016 PATTERN-RHO-017 PATTERN-SIGMA-018 PATTERN-TAU-019 PATTERN-UPSILON-020 PATTERN-PHI-021 PATTERN-CHI-022 PATTERN-PSI-023 PATTERN-OMEGA-024"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "Echo the configuration file content exactly as provided."
+      },
+      {
+        "role": "user",
+        "content": "server:\n  host: 0.0.0.0\n  port: 8080\n  ssl:\n    enabled: true\n    cert_path: /etc/ssl/certs/server.crt\n    key_path: /etc/ssl/private/server.key\n    protocols: [TLSv1.2, TLSv1.3]\n  \ndatabase:\n  primary:\n    host: db-primary.internal\n    port: 5432\n    name: production_db\n    user: app_user\n    password: ${DB_PASSWORD}\n    pool_size: 50\n    max_overflow: 100\n  replica:\n    host: db-replica.internal\n    port: 5432\n    name: production_db\n    user: readonly_user\n    password: ${DB_READONLY_PASSWORD}\n    pool_size: 30\n    \ncache:\n  redis:\n    nodes:\n      - redis-01.internal:6379\n      - redis-02.internal:6379\n      - redis-03.internal:6379\n    password: ${REDIS_PASSWORD}\n    db: 0\n    timeout: 5000\n    \nlogging:\n  level: INFO\n  format: json\n  outputs:\n    - type: file\n      path: /var/log/app/application.log\n      rotation: daily\n      retention: 30\n    - type: elasticsearch\n      hosts: [es-01.internal:9200, es-02.internal:9200]\n      index: app-logs-%{+YYYY.MM.dd}"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "Repeat the markdown documentation exactly as provided, preserving all formatting."
+      },
+      {
+        "role": "user",
+        "content": "# API Documentation v3.0\n\n## Authentication\n\nAll API requests require authentication using Bearer tokens:\n\n```bash\ncurl -H \"Authorization: Bearer YOUR_ACCESS_TOKEN\" \\\n     -H \"Content-Type: application/json\" \\\n     https://api.example.com/v3/endpoint\n```\n\n## Endpoints\n\n### GET /api/v3/users/{id}\n\n**Parameters:**\n- `id` (string, required): User identifier UUID\n- `include` (array, optional): Related resources to include\n\n**Response:**\n```json\n{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"username\": \"john_doe\",\n  \"email\": \"john@example.com\",\n  \"created_at\": \"2024-01-15T10:30:00Z\",\n  \"updated_at\": \"2024-11-06T14:22:30Z\"\n}\n```\n\n### POST /api/v3/transactions\n\n**Request Body:**\n```json\n{\n  \"amount\": 99.99,\n  \"currency\": \"USD\",\n  \"recipient_id\": \"550e8400-e29b-41d4-a716-446655440001\",\n  \"metadata\": {\n    \"order_id\": \"ORD-123456\",\n    \"description\": \"Payment for services\"\n  }\n}\n```\n\n## Rate Limiting\n\n- 1000 requests per hour for authenticated users\n- 100 requests per hour for unauthenticated users\n- Headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a log entry repeater. Output the log entries exactly as provided."
+      },
+      {
+        "role": "user",
+        "content": "[2024-11-06 15:42:31.245] INFO  ApplicationServer - Starting application server on port 8080\n[2024-11-06 15:42:31.567] DEBUG DatabaseConnection - Attempting connection to postgresql://localhost:5432/maindb\n[2024-11-06 15:42:31.892] INFO  DatabaseConnection - Successfully connected to database\n[2024-11-06 15:42:32.103] INFO  CacheManager - Initializing Redis cache client\n[2024-11-06 15:42:32.234] DEBUG CacheManager - Connected to Redis cluster: 3 nodes available\n[2024-11-06 15:42:32.456] INFO  SecurityMiddleware - Loading SSL certificates from /etc/ssl/certs\n[2024-11-06 15:42:32.678] WARN  SecurityMiddleware - Certificate expires in 30 days, consider renewal\n[2024-11-06 15:42:32.890] INFO  RouterManager - Registering API routes\n[2024-11-06 15:42:33.012] DEBUG RouterManager - Route registered: GET /api/v3/health\n[2024-11-06 15:42:33.134] DEBUG RouterManager - Route registered: POST /api/v3/auth/login\n[2024-11-06 15:42:33.256] DEBUG RouterManager - Route registered: GET /api/v3/users/:id\n[2024-11-06 15:42:33.378] INFO  MetricsCollector - Prometheus metrics endpoint enabled at /metrics\n[2024-11-06 15:42:33.500] INFO  ApplicationServer - Server successfully started and listening on 0.0.0.0:8080\n[2024-11-06 15:42:33.622] INFO  HealthCheck - All systems operational"
+      }
+    ]
+  }
+]
