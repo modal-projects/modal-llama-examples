@@ -10,6 +10,7 @@ import time
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 import statistics
+import re
 
 app = modal.App("benchmark-runner")
 
@@ -433,27 +434,29 @@ def main(
             df = df.sort_values("Mean ITL (ms)")
         print("\n" + df.to_string(index=False))
 
-        # Save results
+        # Save results into organized directory tree
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        base_dir = Path("benchmark_outputs") / f"{engine}_{timestamp}"
+        detailed_dir = base_dir / "detailed"
+        summary_dir = base_dir / "summaries"
+        chats_parent_dir = base_dir / "chats"
+        for folder in (detailed_dir, summary_dir, chats_parent_dir):
+            folder.mkdir(parents=True, exist_ok=True)
 
         # Save detailed results
-        detailed_file = f"benchmark_detailed_{engine}_{timestamp}.json"
+        detailed_file = detailed_dir / f"benchmark_detailed_{engine}_{timestamp}.json"
         with open(detailed_file, "w") as f:
             json.dump(results, f, indent=2)
         print(f"\nDetailed results saved to {detailed_file}")
 
         # Save summary
-        summary_file = f"benchmark_summary_{engine}_{timestamp}.csv"
+        summary_file = summary_dir / f"benchmark_summary_{engine}_{timestamp}.csv"
         df.to_csv(summary_file, index=False)
         print(f"Summary saved to {summary_file}")
 
         # Save chat transcripts (messages + assistant output) per deployment for spot checks
-        from pathlib import Path as _Path
-        import json as _json
-        import re as _re
-
-        out_dir = _Path(f"benchmark_chats_{engine}_{timestamp}")
-        out_dir.mkdir(parents=True, exist_ok=True)
+        chats_dir = chats_parent_dir / f"benchmark_chats_{engine}_{timestamp}"
+        chats_dir.mkdir(parents=True, exist_ok=True)
         for agg in results:
             dep_name = (
                 agg.get("deployment", "unknown")
@@ -462,9 +465,9 @@ def main(
                 .replace("SGLang", "")
             )
             dep_slug = (
-                _re.sub(r"[^A-Za-z0-9_\-]+", "_", dep_name).strip("_") or "deployment"
+                re.sub(r"[^A-Za-z0-9_\-]+", "_", dep_name).strip("_") or "deployment"
             )
-            outfile = out_dir / f"{dep_slug}.jsonl"
+            outfile = chats_dir / f"{dep_slug}.jsonl"
             with open(outfile, "w") as f:
                 for ind in agg.get("individual_results", []):
                     msgs = ind.get("messages") or []
@@ -489,8 +492,10 @@ def main(
                         "chat": chat,
                         "extra": ind.get("extra"),
                     }
-                    f.write(_json.dumps(record) + "\n")
+                    f.write(json.dumps(record) + "\n")
             print(f"Chats saved to {outfile}")
+
+        print(f"\nAll outputs organized under {base_dir}")
 
         # Show best performers
         print("\n" + "=" * 80)
