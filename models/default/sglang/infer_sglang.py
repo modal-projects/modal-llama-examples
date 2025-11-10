@@ -21,7 +21,6 @@ SGLANG_IMAGE: modal.Image = modal.Image.from_registry(
         "HF_HUB_ENABLE_HF_TRANSFER": "1",
         "PMIX_MCA_gds": "hash",
         "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": "1",  # Allow EAGLE draft model with smaller context
-        "SGLANG_ENABLE_SPEC_V2": "1",
     }
 )
 
